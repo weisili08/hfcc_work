@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aics-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend/data:/app/data
+      - ./backend/logs:/app/logs
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DATA_DIR=/app/data
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_API_URL=${LLM_API_URL:-https://api.openai.com/v1}
+      - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
+      - LLM_TIMEOUT=${LLM_TIMEOUT:-30}
+      - LLM_BACKUP_API_KEY=${LLM_BACKUP_API_KEY:-}
+      - LLM_BACKUP_API_URL=${LLM_BACKUP_API_URL:-}
+      - LLM_BACKUP_MODEL=${LLM_BACKUP_MODEL:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    networks:
+      - aics-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/v1/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端服务
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aics-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - aics-network
+    restart: unless-stopped
+
+networks:
+  aics-network:
+    driver: bridge
